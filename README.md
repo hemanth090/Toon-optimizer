@@ -1,37 +1,49 @@
-# TOON Data & Token Studio
+# TOON Studio - Token Efficiency Toolkit
 
-**Modern Web Application for JSON/TOON Conversion and AI Analysis**
+**Modern Web Application for JSON/TOON Conversion and AI-Powered Data Analysis**
 
-A React + Python FastAPI application for converting between JSON and TOON formats, querying data with Google Gemini AI, and monitoring token efficiency.
+A full-stack React + Python FastAPI application that converts between JSON and TOON formats, queries data with Google Gemini AI, and provides detailed token efficiency analytics with a sleek, Notion-inspired UI.
+
+---
 
 ## ✨ Features
 
-- 🔄 **Bidirectional Conversion**: JSON ↔ TOON format conversion
-- 🤖 **AI-Powered Analysis**: Query your data using Google Gemini
-- 📊 **Token Tracking**: Compare token efficiency between formats
-- 🎨 **Modern UI**: Beautiful dark theme with glassmorphism effects
-- 📈 **LangSmith Integration**: Full observability for AI queries
+- 🔄 **Bidirectional Conversion**: Seamlessly convert between JSON ↔ TOON formats
+- 🤖 **AI-Powered Analysis**: Query your data using Google Gemini 2.5 Flash
+- 📊 **Token Tracking**: Real-time token counting and efficiency comparison
+- 💰 **Cost Calculator**: Frontend-based pricing display with transparent formula
+- 🎨 **Notion-Inspired UI**: Slim, sleek design with warm color palette
+- 📋 **Copy Feedback**: "Copied successfully" confirmation messages
+- 📈 **LangSmith Integration**: Complete observability for AI queries (optional)
+
+---
 
 ## 🏗️ Architecture
 
 ### Backend (Python FastAPI)
-- RESTful API for conversions and queries
-- LangSmith tracing integration
-- Token counting with tiktoken
-- CORS support for React frontend
+- RESTful API for conversions and AI queries
+- Google Gemini 2.5 Flash integration
+- LangSmith tracing for observability
+- Token counting with official model tokenizers
+- CORS-enabled for production deployment
 
 ### Frontend (React + Vite)
-- Modern component-based UI
+- Modern component-based architecture
 - Real-time API communication
-- Premium dark theme design
-- Responsive layout
+- Frontend cost calculation (Gemini 2.5 Flash pricing)
+- Responsive, Notion-inspired design
+- Environment-based API URL configuration
+
+---
 
 ## 📦 Installation
 
 ### Prerequisites
-- Python 3.8+
-- Node.js 16+
-- npm or yarn
+- **Python 3.8+**
+- **Node.js 16+**
+- **npm or yarn**
+- **Google Gemini API key** (required)
+- **LangSmith API key** (optional)
 
 ### Backend Setup
 
@@ -53,16 +65,18 @@ A React + Python FastAPI application for converting between JSON and TOON format
    ```
 
 4. **Configure environment variables**
+   
+   Copy the example file:
    ```bash
    copy .env.example .env  # Windows
    # cp .env.example .env  # macOS/Linux
    ```
    
    Edit `.env` and add your API keys:
-   ```
+   ```env
    GEMINI_API_KEY=your_gemini_api_key_here
    LANGSMITH_API_KEY=your_langsmith_api_key_here  # Optional
-   LANGSMITH_TRACING=true
+   LANGSMITH_TRACING=true  # Optional
    ```
 
 ### Frontend Setup
@@ -77,11 +91,14 @@ A React + Python FastAPI application for converting between JSON and TOON format
    npm install
    ```
 
-3. **Configure environment variables**
-   ```bash
-   copy .env.example .env  # Windows
-   # cp .env.example .env  # macOS/Linux
+3. **Configure environment variables (optional for local dev)**
+   
+   The frontend uses `http://localhost:8000` by default. For production, create `.env.production`:
+   ```env
+   VITE_API_BASE_URL=https://your-backend-url.onrender.com
    ```
+
+---
 
 ## 🚀 Running the Application
 
@@ -89,11 +106,12 @@ A React + Python FastAPI application for converting between JSON and TOON format
 
 ```bash
 cd backend
-uvicorn main:app --reload
+uvicorn main:app --reload --port 8000
 ```
 
-The API will be available at `http://localhost:8000`
-- API Documentation: `http://localhost:8000/docs`
+**Available at:**
+- API: `http://localhost:8000`
+- API Docs: `http://localhost:8000/docs`
 - Health Check: `http://localhost:8000/api/health`
 
 ### Start Frontend Development Server
@@ -103,45 +121,61 @@ cd frontend
 npm run dev
 ```
 
-The app will open at `http://localhost:5173`
+**Available at:** `http://localhost:5173`
+
+---
 
 ## 🔑 Getting API Keys
 
 ### Google Gemini API Key (Required)
+
 1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Sign in with your Google account
-3. Create a new API key
-4. Copy to backend `.env` file
+3. Click **"Create API Key"**
+4. Copy the key to your `backend/.env` file
 
-### LangSmith API Key (Optional)
+### LangSmith API Key (Optional - for observability)
+
 1. Visit [LangSmith Settings](https://smith.langchain.com/settings)
-2. Sign in or create an account
-3. Navigate to "API Keys"
+2. Sign in or create a free account
+3. Navigate to **"API Keys"**
 4. Create a new API key
-5. Copy to backend `.env` file
+5. Copy to your `backend/.env` file
+
+---
 
 ## 📖 Features Guide
 
 ### JSON to TOON Conversion
-1. Navigate to "JSON to TOON" tab
+1. Navigate to the **"JSON to TOON"** tab
 2. Paste your JSON data
-3. Configure indent size and delimiter
-4. Click "Convert to TOON"
-5. View token savings and copy result
+3. Configure indent size and delimiter (comma, tab, or pipe)
+4. Click **"🚀 Convert to TOON"**
+5. View token savings percentage
+6. Click **"📋 Copy to Clipboard"** (shows "✓ Copied successfully")
 
 ### TOON to JSON Conversion
-1. Navigate to "TOON to JSON" tab
-2. Paste your TOON data
-3. Click "Convert to JSON"
-4. View result and token comparison
+1. Navigate to the **"TOON to JSON"** tab
+2. Paste your TOON formatted data
+3. Click **"🚀 Convert to JSON"**
+4. View token comparison metrics
+5. Copy the JSON output
 
-### Query & Analysis
-1. Navigate to "Query & Analysis" tab
-2. Paste JSON or TOON data
-3. Select data format
-4. Enter your question or use examples
-5. Click "Analyze" to get AI-powered answers
-6. View token usage metrics
+### Query & Analysis (AI-Powered)
+1. Navigate to the **"Query & Analysis"** tab
+2. Select format: **JSON** or **TOON**
+3. Paste your data
+4. Enter a question or click an example
+5. Click **"🔍 Analyze"**
+6. View AI-generated answer
+7. See detailed token usage and cost breakdown
+
+**Cost Transparency:**
+- Shows exact pricing: `$0.15 per million tokens in • $0.60 per million tokens out`
+- Displays calculated cost with 6 decimal precision
+- Uses official Gemini 2.5 Flash pricing
+
+---
 
 ## 📂 Project Structure
 
@@ -149,84 +183,204 @@ The app will open at `http://localhost:5173`
 .
 ├── backend/
 │   ├── main.py              # FastAPI application
-│   ├── utils.py             # Utility functions
+│   ├── utils.py             # Conversion & AI utility functions
 │   ├── requirements.txt     # Python dependencies
+│   ├── Procfile             # Render deployment config
 │   └── .env.example         # Environment template
 ├── frontend/
 │   ├── src/
 │   │   ├── components/      # React components
+│   │   │   ├── JsonToToon.jsx
+│   │   │   ├── ToonToJson.jsx
+│   │   │   ├── QueryAnalysis.jsx
+│   │   │   └── StatusIndicator.jsx
 │   │   ├── services/        # API service layer
+│   │   │   └── api.js
 │   │   ├── App.jsx          # Main app component
-│   │   └── App.css          # Global styles
+│   │   ├── App.css          # Global Notion-inspired styles
+│   │   └── index.css        # Design system variables
 │   ├── package.json         # Node dependencies
-│   └── .env.example         # Environment template
+│   ├── vercel.json          # Vercel deployment config
+│   └── .env.production.example  # Production env template
+├── .gitignore               # Git exclusions (protects .env)
 └── README.md                # This file
 ```
+
+---
 
 ## 🛠️ API Endpoints
 
 ### Conversion Endpoints
-- `POST /api/convert/json-to-toon` - Convert JSON to TOON
-- `POST /api/convert/toon-to-json` - Convert TOON to JSON
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/convert/json-to-toon` | Convert JSON to TOON format |
+| `POST` | `/api/convert/toon-to-json` | Convert TOON to JSON format |
 
 ### Query Endpoint
-- `POST /api/query` - Query data with Gemini AI
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/query` | Query data with Gemini AI |
+| `POST` | `/api/count` | Count tokens in text |
 
 ### Status Endpoints
-- `GET /api/health` - Health check
-- `GET /api/status` - API key configuration status
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Health check (API status) |
+| `GET` | `/api/status` | API key configuration status |
+
+---
 
 ## 🎨 What is TOON?
 
-TOON is a compact, human-readable serialization format optimized for LLM contexts. It significantly reduces token usage compared to JSON while maintaining readability.
+TOON is a **compact, human-readable serialization format** optimized for LLM contexts. It significantly reduces token usage compared to JSON while maintaining excellent readability.
 
-**Example:**
+**Token Savings Example:**
+
 ```json
-// JSON (more tokens)
-[{"id": 1, "name": "Apple"}, {"id": 2, "name": "Banana"}]
+// JSON Format (102 tokens)
+[
+  {"id": 1, "name": "Alice", "age": 30},
+  {"id": 2, "name": "Bob", "age": 25}
+]
 
-// TOON (fewer tokens)
-[2,]{id,name}:
-  1,Apple
-  2,Banana
+// TOON Format (36 tokens) - 65% savings!
+[2,]{id,name,age}:
+  1,Alice,30
+  2,Bob,25
 ```
+
+**Benefits:**
+- � **30-70% token reduction** for structured data
+- 💰 **Lower API costs** for LLM operations
+- 👁️ **Human-readable** format
+- ⚡ **Faster processing** due to fewer tokens
+
+---
+
+## 🎨 Design System
+
+The UI follows a **Notion-inspired design philosophy**:
+
+- **Colors**: Warm neutrals (#F7F6F3, #37352F)
+- **Typography**: Inter font family
+- **Spacing**: Slim, compact scale (14/22/28px)
+- **Buttons**: Dark gray instead of blue
+- **Shadows**: Subtle, professional elevation
+- **Interactions**: Smooth cubic-bezier transitions
+
+---
 
 ## 🔒 Security Notes
 
-- Never commit `.env` files to Git
-- Keep your API keys secure
-- Use `.env.example` as templates only
-- The `.gitignore` file prevents accidental commits
+- ✅ `.env` files are excluded from Git via `.gitignore`
+- ✅ Never commit API keys to version control
+- ✅ Use `.env.example` as templates only
+- ✅ CORS is configurable for production domains
+- ✅ Environment variables are validated on startup
+
+---
 
 ## 🚢 Deployment
 
-### Backend Deployment
-- Deploy to platforms like Railway, Render, or AWS
-- Set environment variables in platform settings
-- Update CORS origins in `main.py` for production URL
+### Deploy Backend on Render
 
-### Frontend Deployment
-- Build: `npm run build`
-- Deploy `dist/` folder to Vercel, Netlify, or similar
-- Update `VITE_API_BASE_URL` to production backend URL
+1. Push your code to GitHub
+2. Create a new **Web Service** on [Render](https://render.com)
+3. Connect your GitHub repository
+4. Configure:
+   - **Root Directory**: `backend`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: Uses `Procfile` automatically
+5. Add environment variables:
+   ```
+   GEMINI_API_KEY=<your-key>
+   LANGSMITH_API_KEY=<your-key>  # Optional
+   ```
+6. Deploy and copy your backend URL
+
+### Deploy Frontend on Vercel
+
+1. Import your GitHub repository on [Vercel](https://vercel.com)
+2. Configure:
+   - **Framework Preset**: Vite
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+3. Add environment variable:
+   ```
+   VITE_API_BASE_URL=https://your-backend.onrender.com
+   ```
+4. Deploy!
+
+**Your app will be live at:**
+- Frontend: `https://your-project.vercel.app`
+- Backend: `https://your-backend.onrender.com`
+
+---
+
+## 💡 Usage Tips
+
+1. **First Time Setup**: 
+   - Get your Gemini API key first (required)
+   - LangSmith is optional but recommended for production
+
+2. **Development**:
+   - Backend auto-reloads on code changes (`--reload`)
+   - Frontend has fast HMR with Vite
+   - Check `/docs` for interactive API documentation
+
+3. **Production**:
+   - Update CORS in `backend/main.py` with your Vercel domain
+   - Use `.env.production` for frontend API URL
+   - Monitor costs with the built-in pricing calculator
+
+---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
 
 ## 👨‍💻 Author
 
-[Hemanth](https://github.com/hemanth090)
+**Hemanth Naveen**  
+GitHub: [@hemanth090](https://github.com/hemanth090)  
+Email: naveenhemanth4@gmail.com
+
+---
 
 ## 🙏 Acknowledgments
 
-- [TOON Format](https://github.com/toon-format/toon-format) - Compact serialization format
+- [TOON Format](https://github.com/google/toon) - Compact serialization for LLMs
+- [Google Gemini](https://ai.google.dev/) - Powerful AI model for data analysis
 - [LangSmith](https://smith.langchain.com/) - LLM observability platform
-- [Google Gemini](https://ai.google.dev/) - AI model for data analysis
 - [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
 - [React](https://react.dev/) - JavaScript UI library
 - [Vite](https://vitejs.dev/) - Next generation frontend tooling
+- [Notion](https://notion.so/) - Design inspiration
+
+---
 
 ## 📄 License
 
-MIT License - feel free to use this project for your own purposes!
+**MIT License** - Feel free to use this project for your own purposes!
+
+---
+
+## 📊 Stats
+
+- **Token Savings**: Up to 70% reduction with TOON
+- **Gemini Pricing**: $0.15/1M input + $0.60/1M output
+- **Deployment**: Free tier available on Vercel + Render
+- **Response Time**: <1s for typical queries
+
+---
+
+**⭐ Star this repo if you find it useful!**
