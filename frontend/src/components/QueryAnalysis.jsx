@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react';
 import { queryData, countTokens } from '../services/api';
 import './QueryAnalysis.css';
 
+// Gemini 2.5 Flash Pricing
+const GEMINI_PRICING = {
+    INPUT_PER_MILLION: 0.15,
+    OUTPUT_PER_MILLION: 0.60,
+};
+
+const calculateCost = (inputTokens, outputTokens) => {
+    const cost =
+        (inputTokens / 1_000_000) * GEMINI_PRICING.INPUT_PER_MILLION +
+        (outputTokens / 1_000_000) * GEMINI_PRICING.OUTPUT_PER_MILLION;
+    return cost.toFixed(6);
+};
+
 // Debounce helper
 const useDebounce = (value, delay) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -22,7 +35,7 @@ function QueryAnalysis() {
     const [inputTokenCount, setInputTokenCount] = useState(0);
     const [isCounting, setIsCounting] = useState(false);
 
-    const debouncedDataInput = useDebounce(dataInput, 500);
+    const debouncedDataInput = useDebounce(dataInput, 1000);
 
     useEffect(() => {
         const fetchTokenCount = async () => {
@@ -63,16 +76,6 @@ function QueryAnalysis() {
         if (!dataInput.trim()) {
             setError('Please provide data to analyze');
             return;
-        }
-
-        // Only validate JSON (backend will handle TOON validation)
-        if (dataFormat === 'JSON') {
-            try {
-                JSON.parse(dataInput);
-            } catch (e) {
-                setError('Invalid JSON format. Please check your data.');
-                return;
-            }
         }
 
         setLoading(true);
@@ -200,13 +203,12 @@ function QueryAnalysis() {
                                 <div className="breakdown-item cost">
                                     <span className="label">Cost</span>
                                     <span className="value">
-                                        ${((result.prompt_tokens / 1000000) * 0.15 +
-                                            (result.completion_tokens / 1000000) * 0.60).toFixed(6)}
+                                        ${calculateCost(result.prompt_tokens, result.completion_tokens)}
                                     </span>
                                 </div>
                             </div>
                             <div className="pricing-info">
-                                Pricing: $0.15 per million tokens in • $0.60 per million tokens out
+                                Pricing: ${GEMINI_PRICING.INPUT_PER_MILLION} per million tokens in • ${GEMINI_PRICING.OUTPUT_PER_MILLION} per million tokens out
                             </div>
                         </div>
                     </div>

@@ -20,8 +20,14 @@ class ApiService {
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+            let errorMessage = `HTTP error! status: ${response.status}`;
+            try {
+                const error = await response.json();
+                errorMessage = error.detail || errorMessage;
+            } catch {
+                // Non-JSON response from server/proxy
+            }
+            throw new Error(errorMessage);
         }
 
         return await response.json();

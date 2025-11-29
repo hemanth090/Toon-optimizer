@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 from typing import Optional, Literal
 import json
 import os
@@ -34,9 +34,15 @@ app.add_middleware(
 
 # Request/Response Models
 class JsonToToonRequest(BaseModel):
-    json_input: str
-    indent: int = 2
-    delimiter: str = ","
+    json_input: str = Field(..., min_length=1)
+    indent: int = Field(default=2, ge=1, le=8)
+    delimiter: str = Field(default=",")
+    
+    @validator('delimiter')
+    def validate_delimiter(cls, v):
+        if v not in [',', '\t', '|']:
+            raise ValueError('Delimiter must be one of: , \\t |')
+        return v
 
 class JsonToToonResponse(BaseModel):
     output: str
@@ -44,9 +50,6 @@ class JsonToToonResponse(BaseModel):
     toon_data_tokens: int
     savings: int
     savings_percent: float
-    # Backward compatibility if needed, but better to be clean
-    json_tokens: int
-    toon_tokens: int
 
 class ToonToJsonRequest(BaseModel):
     toon_input: str
@@ -55,9 +58,6 @@ class ToonToJsonResponse(BaseModel):
     output: str
     toon_data_tokens: int
     json_data_tokens: int
-    # Backward compatibility
-    toon_tokens: int
-    json_tokens: int
 
 class QueryRequest(BaseModel):
     data_text: str

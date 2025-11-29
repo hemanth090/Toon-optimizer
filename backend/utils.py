@@ -1,47 +1,40 @@
 import json
-import toon_format as toon_encoder
-import tiktoken
+import time
 import os
 from dotenv import load_dotenv
-from langsmith import Client
-import json
-import toon_format as toon_encoder
+
 import tiktoken
-import os
-from dotenv import load_dotenv
+import toon_format as toon_encoder
+import google.generativeai as genai
 from langsmith import Client
 from langsmith.run_helpers import traceable
-import google.generativeai as genai
 
 # Load environment variables first
 load_dotenv()
 
-# Initialize Gemini Models (Cached)
+# Initialize Gemini Model (Cached single instance)
 _temp_gemini_key = os.getenv("GEMINI_API_KEY")
-TOKEN_MODEL = None
-QUERY_MODEL = None
+GEMINI_MODEL = None
 
 if _temp_gemini_key:
     try:
         genai.configure(api_key=_temp_gemini_key)
-        TOKEN_MODEL = genai.GenerativeModel("gemini-2.5-flash")
-        QUERY_MODEL = genai.GenerativeModel("gemini-2.5-flash")
+        GEMINI_MODEL = genai.GenerativeModel("gemini-2.5-flash")
     except Exception:
         pass
 
 # Token counting using Gemini tokenizer
 def count_tokens(text: str) -> int:
-    """Count tokens using Gemini native tokenizer"""
+    """Count tokens using Gemini native tokenizer with tiktoken fallback"""
     try:
-        if TOKEN_MODEL:
-            return TOKEN_MODEL.count_tokens(text).total_tokens
-            
-        # Fallback if model init failed
-        encoding = tiktoken.get_encoding("cl100k_base")
-        return len(encoding.encode(text))
+        if GEMINI_MODEL:
+            return GEMINI_MODEL.count_tokens(text).total_tokens
     except Exception:
-        encoding = tiktoken.get_encoding("cl100k_base")
-        return len(encoding.encode(text))
+        pass  # Fall through to tiktoken fallback
+    
+    # Fallback to tiktoken
+    encoding = tiktoken.get_encoding("cl100k_base")
+    return len(encoding.encode(text))
 
 # API Key checks
 def check_api_keys():
@@ -81,10 +74,7 @@ def convert_json_to_toon_util(json_input: str, indent: int, delimiter: str):
         "json_data_tokens": json_data_tokens,
         "toon_data_tokens": toon_data_tokens,
         "savings": savings,
-        "savings_percent": savings_percent,
-        # Legacy keys for compatibility (can be removed if frontend is fully updated)
-        "json_tokens": json_data_tokens,
-        "toon_tokens": toon_data_tokens
+        "savings_percent": savings_percent
     }
 
 def convert_toon_to_json_util(toon_input: str):
@@ -99,10 +89,7 @@ def convert_toon_to_json_util(toon_input: str):
         return {
             "output": json_output_str,
             "toon_data_tokens": toon_data_tokens,
-            "json_data_tokens": json_data_tokens,
-            # Legacy keys
-            "toon_tokens": toon_data_tokens,
-            "json_tokens": json_data_tokens
+            "json_data_tokens": json_data_tokens
         }
     except NotImplementedError:
         raise NotImplementedError(
@@ -176,10 +163,10 @@ Provide a clear, concise answer. If the question requires calculations, show you
     )
     def _gemini_query(prompt_text, input_tokens):
         # Use cached model if available
-        model = QUERY_MODEL
+        model = GEMINI_MODEL
         if not model:
-             model = genai.GenerativeModel('gemini-2.5-flash')
-             
+            model = genai.GenerativeModel('gemini-2.5-flash')
+            
         response = model.generate_content(prompt_text)
         answer_text = response.text
         output_tokens = count_tokens(answer_text)

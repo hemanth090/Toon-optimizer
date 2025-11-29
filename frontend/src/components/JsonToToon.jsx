@@ -62,7 +62,12 @@ function JsonToToon() {
                                 min="1"
                                 max="8"
                                 value={indent}
-                                onChange={(e) => setIndent(parseInt(e.target.value))}
+                                onChange={(e) => {
+                                    const value = parseInt(e.target.value, 10);
+                                    if (!isNaN(value) && value >= 1 && value <= 8) {
+                                        setIndent(value);
+                                    }
+                                }}
                             />
                         </label>
 
