@@ -118,7 +118,6 @@ The header `[2]{id,name,age}` tells the LLM to expect 2 items with those specifi
 
 Contributions are welcome! Please run the test suite before submitting a PR.
 
-**Author**: Hemanth Naveen  
 **GitHub**: [@hemanth090](https://github.com/hemanth090)
 
 ---
