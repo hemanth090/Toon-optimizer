@@ -1,6 +1,7 @@
 import json
 import time
 import os
+import logging
 from dotenv import load_dotenv
 
 import tiktoken
@@ -9,19 +10,24 @@ import google.generativeai as genai
 from langsmith import Client
 from langsmith.run_helpers import traceable
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 # Load environment variables first
 load_dotenv()
 
 # Initialize Gemini Model (Cached single instance)
 _temp_gemini_key = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
 GEMINI_MODEL = None
 
 if _temp_gemini_key:
     try:
         genai.configure(api_key=_temp_gemini_key)
-        GEMINI_MODEL = genai.GenerativeModel("gemini-2.5-flash")
-    except Exception:
-        pass
+        GEMINI_MODEL = genai.GenerativeModel(GEMINI_MODEL_NAME)
+        logger.info(f"Gemini model '{GEMINI_MODEL_NAME}' initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Gemini model: {e}")
 
 # Token counting using Gemini tokenizer
 def count_tokens(text: str) -> int:
@@ -100,7 +106,7 @@ def convert_toon_to_json_util(toon_input: str):
     except Exception as e:
         raise Exception(f"[TOON decode failed] Structure not supported: {str(e)}")
 
-import time
+
 
 def query_data_with_gemini_util(data_text: str, question: str, data_format: str):
     """Query and analyze data using Gemini AI"""
@@ -167,7 +173,7 @@ Provide a clear, natural language answer. Be direct and concise."""
         # Use cached model if available
         model = GEMINI_MODEL
         if not model:
-            model = genai.GenerativeModel('gemini-2.5-flash')
+            model = genai.GenerativeModel(GEMINI_MODEL_NAME)
             
         response = model.generate_content(prompt_text)
         answer_text = response.text
@@ -228,8 +234,9 @@ Provide a clear, natural language answer. Be direct and concise."""
                 toon_str = toon_encoder.encode(data_obj, options={"indent": 2, "delimiter": ","})
                 output_toon_tokens = count_tokens(toon_str)
                 output_conversion_status = "success"
-    except:
+    except (json.JSONDecodeError, ValueError, TypeError) as e:
         # If no structured data or conversion fails, count the raw answer
+        logger.debug(f"Could not extract JSON from answer: {e}")
         output_json_tokens = completion_tokens  # Use the raw completion tokens
         output_toon_tokens = completion_tokens
         output_conversion_status = "plain_text"

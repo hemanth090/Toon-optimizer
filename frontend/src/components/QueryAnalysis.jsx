@@ -157,7 +157,7 @@ function QueryAnalysis() {
                         onChange={(e) => setQuestion(e.target.value)}
                         placeholder="e.g., What's the average age?"
                         disabled={!dataInput.trim()}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAnalyze()}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
                     />
 
                     <div className="examples">

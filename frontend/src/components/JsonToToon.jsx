@@ -34,9 +34,14 @@ function JsonToToon() {
     };
 
     const handleCopy = async () => {
-        await navigator.clipboard.writeText(result.output);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        try {
+            await navigator.clipboard.writeText(result.output);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            setError('Failed to copy to clipboard');
+        }
     };
 
     return (

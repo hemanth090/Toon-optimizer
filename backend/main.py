@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Literal
 import json
 import os
@@ -22,11 +22,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware - allows React frontend from any origin
-# For production, update allow_origins with your specific Vercel domain
+# CORS middleware - configure allowed origins via environment variable
+# Set ALLOWED_ORIGINS in production (comma-separated list)
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update with your Vercel domain in production
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,8 +39,9 @@ class JsonToToonRequest(BaseModel):
     indent: int = Field(default=2, ge=1, le=8)
     delimiter: str = Field(default=",")
     
-    @validator('delimiter')
-    def validate_delimiter(cls, v):
+    @field_validator('delimiter')
+    @classmethod
+    def validate_delimiter(cls, v: str) -> str:
         if v not in [',', '\t', '|']:
             raise ValueError('Delimiter must be one of: , \\t |')
         return v
