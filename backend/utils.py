@@ -42,14 +42,14 @@ def count_tokens(text: str) -> int:
         return len(text) // 4  # Very rough fallback
 
 # API Key checks
-def check_api_keys():
+def check_api_keys(gemini_key: str = None, langsmith_key: str = None):
     """Check which API keys are configured"""
-    langsmith_key = os.getenv("LANGSMITH_API_KEY")
-    gemini_key = os.getenv("GEMINI_API_KEY")
+    langsmith_key_final = langsmith_key or os.getenv("LANGSMITH_API_KEY")
+    gemini_key_final = gemini_key or os.getenv("GEMINI_API_KEY")
     
     return {
-        "langsmith_connected": bool(langsmith_key),
-        "gemini_configured": bool(gemini_key)
+        "langsmith_connected": bool(langsmith_key_final),
+        "gemini_configured": bool(gemini_key_final)
     }
 
 # LangSmith configuration is now handled dynamically per-request

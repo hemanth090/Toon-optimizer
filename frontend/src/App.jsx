@@ -113,7 +113,7 @@ function App() {
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle Dark Mode">
             {theme === "light" ? "🌙 Dark Mode" : "☀️ Light Mode"}
           </button>
-          <StatusIndicator />
+          <StatusIndicator geminiKey={geminiKey} langsmithKey={langsmithKey} />
         </div>
       </aside>
 

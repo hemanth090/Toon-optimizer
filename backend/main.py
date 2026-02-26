@@ -118,9 +118,10 @@ def health_check():
     return {"status": "healthy"}
 
 @app.get("/api/status", response_model=StatusResponse)
-def get_status():
+def get_status(x_gemini_api_key: Optional[str] = Header(None),
+               x_langsmith_api_key: Optional[str] = Header(None)):
     """Check API key configuration status"""
-    status = check_api_keys()
+    status = check_api_keys(gemini_key=x_gemini_api_key, langsmith_key=x_langsmith_api_key)
     return status
 
 @app.post("/api/convert/json-to-toon", response_model=JsonToToonResponse)

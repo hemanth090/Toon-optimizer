@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getStatus } from '../services/api';
 import './StatusIndicator.css';
 
-function StatusIndicator() {
+function StatusIndicator({ geminiKey, langsmithKey }) {
     const [status, setStatus] = useState({
         langsmith_connected: false,
         gemini_configured: false,
@@ -13,29 +13,25 @@ function StatusIndicator() {
         const fetchStatus = async () => {
             try {
                 const data = await getStatus();
-                const localGemini = localStorage.getItem('gemini_api_key');
-                const localLangsmith = localStorage.getItem('langsmith_api_key');
                 
                 setStatus({ 
                     ...data, 
-                    langsmith_connected: data.langsmith_connected || !!localLangsmith,
-                    gemini_configured: data.gemini_configured || !!localGemini,
+                    langsmith_connected: data.langsmith_connected || !!langsmithKey,
+                    gemini_configured: data.gemini_configured || !!geminiKey,
                     loading: false 
                 });
             } catch (error) {
                 console.error('Failed to fetch status:', error);
-                const localGemini = localStorage.getItem('gemini_api_key');
-                const localLangsmith = localStorage.getItem('langsmith_api_key');
                 setStatus({
-                    langsmith_connected: !!localLangsmith,
-                    gemini_configured: !!localGemini,
+                    langsmith_connected: !!langsmithKey,
+                    gemini_configured: !!geminiKey,
                     loading: false
                 });
             }
         };
 
         fetchStatus();
-    }, []);
+    }, [geminiKey, langsmithKey]);
 
     if (status.loading) {
         return <div className="status-loading">Checking connection...</div>;
