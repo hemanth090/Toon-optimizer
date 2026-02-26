@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 import tiktoken
 import toon_format as toon_encoder
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from langsmith import Client
 from langsmith.run_helpers import traceable
 
@@ -16,31 +17,29 @@ logger = logging.getLogger(__name__)
 # Load environment variables first
 load_dotenv()
 
-# Initialize Gemini Model (Cached single instance)
+# Initialize Gemini Client (Cached single instance)
 _temp_gemini_key = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
-GEMINI_MODEL = None
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash")
+genai_client = None
 
 if _temp_gemini_key:
     try:
-        genai.configure(api_key=_temp_gemini_key)
-        GEMINI_MODEL = genai.GenerativeModel(GEMINI_MODEL_NAME)
-        logger.info(f"Gemini model '{GEMINI_MODEL_NAME}' initialized successfully")
+        genai_client = genai.Client(api_key=_temp_gemini_key)
+        logger.info(f"Google GenAI client initialized with model '{GEMINI_MODEL_NAME}'")
     except Exception as e:
-        logger.error(f"Failed to initialize Gemini model: {e}")
+        logger.error(f"Failed to initialize Google GenAI client: {e}")
 
 # Token counting using Gemini tokenizer
+# Token counting using tiktoken (fallback for genai SDK)
 def count_tokens(text: str) -> int:
-    """Count tokens using Gemini native tokenizer with tiktoken fallback"""
+    """Count tokens using tiktoken (best approximation for Gemini)"""
     try:
-        if GEMINI_MODEL:
-            return GEMINI_MODEL.count_tokens(text).total_tokens
-    except Exception:
-        pass  # Fall through to tiktoken fallback
-    
-    # Fallback to tiktoken
-    encoding = tiktoken.get_encoding("cl100k_base")
-    return len(encoding.encode(text))
+        # tiktoken cl100k_base is close to Gemini's tokenizer
+        encoding = tiktoken.get_encoding("cl100k_base")
+        return len(encoding.encode(text))
+    except Exception as e:
+        logger.error(f"Token counting error: {e}")
+        return len(text) // 4  # Very rough fallback
 
 # API Key checks
 def check_api_keys():
@@ -166,16 +165,17 @@ Provide a clear, natural language answer. Be direct and concise."""
         project_name=project_name,
         run_type="llm",
         metadata={
-            "model": "gemini-2.5-flash"
+            "model": GEMINI_MODEL_NAME
         }
     )
     def _gemini_query(prompt_text, input_tokens):
-        # Use cached model if available
-        model = GEMINI_MODEL
-        if not model:
-            model = genai.GenerativeModel(GEMINI_MODEL_NAME)
+        if not genai_client:
+            raise Exception("GenAI client not initialized")
             
-        response = model.generate_content(prompt_text)
+        response = genai_client.models.generate_content(
+            model=GEMINI_MODEL_NAME,
+            contents=prompt_text
+        )
         answer_text = response.text
         output_tokens = count_tokens(answer_text)
         
@@ -262,3 +262,94 @@ Provide a clear, natural language answer. Be direct and concise."""
         "output_conversion_status": output_conversion_status,
         "exec_ms": exec_ms
     }
+
+async def stream_query_data_with_gemini_util(data_text: str, question: str, data_format: str):
+    """Generator for streaming Gemini AI responses via WebSocket using google-genai SDK"""
+    start_time = time.time()
+    
+    if not genai_client:
+        yield json.dumps({"type": "error", "message": "Gemini API key not configured or initialization failed"})
+        return
+    
+    # Set project name based on input format
+    project_name = "json-query-stream" if data_format == "JSON" else "toon-query-stream"
+    
+    # Pre-calculate data tokens
+    json_data_tokens = 0
+    toon_data_tokens = 0
+    try:
+        if data_format == "JSON":
+            json_data_tokens = count_tokens(data_text)
+            data_obj = json.loads(data_text)
+            toon_text = toon_encoder.encode(data_obj, options={"indent": 2, "delimiter": ","})
+            toon_data_tokens = count_tokens(toon_text)
+        else:
+            toon_data_tokens = count_tokens(data_text)
+            data_obj = toon_encoder.decode(data_text)
+            json_text = json.dumps(data_obj, indent=2)
+            json_data_tokens = count_tokens(json_text)
+    except Exception as e:
+        logger.warning(f"Conversion or token counting warning: {e}")
+
+    prompt = f"""You are a data analysis assistant. Answer the question based on the provided data.
+
+Data:
+```
+{data_text}
+```
+
+Question: {question}
+
+Provide a clear, natural language answer. Be direct and concise."""
+
+    prompt_tokens = count_tokens(prompt)
+    full_answer = ""
+    
+    # Send initial metadata
+    yield json.dumps({
+        "type": "metadata",
+        "json_data_tokens": json_data_tokens,
+        "toon_data_tokens": toon_data_tokens,
+        "prompt_tokens": prompt_tokens
+    })
+
+    try:
+        # Use the new SDK streaming method
+        response_stream = genai_client.models.generate_content_stream(
+            model=GEMINI_MODEL_NAME,
+            contents=prompt
+        )
+        
+        for chunk in response_stream:
+            # The new SDK might return chunks with text or without it (e.g. metadata chunks)
+            chunk_text = chunk.text
+            if chunk_text:
+                full_answer += chunk_text
+                yield json.dumps({
+                    "type": "content",
+                    "delta": chunk_text
+                })
+        
+        # Final stats
+        completion_tokens = count_tokens(full_answer)
+        exec_ms = round((time.time() - start_time) * 1000, 2)
+        
+        yield json.dumps({
+            "type": "final",
+            "answer": full_answer,
+            "completion_tokens": completion_tokens,
+            "total_llm_tokens": prompt_tokens + completion_tokens,
+            "exec_ms": exec_ms
+        })
+        
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Streaming error: {error_msg}")
+        
+        # Handle specific error codes if available
+        if "429" in error_msg:
+            yield json.dumps({"type": "error", "message": "Rate limit exceeded. Please wait a moment before trying again."})
+        elif "403" in error_msg:
+            yield json.dumps({"type": "error", "message": "Invalid API key or permission denied."})
+        else:
+            yield json.dumps({"type": "error", "message": f"An error occurred: {error_msg}"})

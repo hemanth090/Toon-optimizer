@@ -29,7 +29,7 @@ function StatusIndicator() {
 
     return (
         <div className="status-container">
-            <h3>Connection Status</h3>
+            <h2>Connection Status</h2>
 
             <div className={`status-item ${status.langsmith_connected ? 'connected' : 'disconnected'}`}>
                 <span className="status-icon">{status.langsmith_connected ? '✓' : '✗'}</span>

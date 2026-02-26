@@ -1,5 +1,5 @@
 /* Authentic Notion Design System */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
 
 :root {
   /* Notion's Authentic Color Palette */
@@ -54,6 +54,31 @@
   --space-8: 28px;
 }
 
+/* Authentic Notion Dark Mode */
+[data-theme='dark'] {
+  --bg-primary: #191919;
+  --bg-secondary: #202020;
+  --bg-tertiary: #252525;
+  --bg-hover: #2c2c2c;
+
+  --text-primary: #ffffff;
+  --text-secondary: #91918e;
+  --text-muted: #5e5e5c;
+
+  --accent: #2eaadc;
+  --accent-hover: #37b7eb;
+  --accent-light: #252525;
+
+  --border-color: #303030;
+  --border-hover: #3f3f3f;
+
+  --shadow-xs: 0 0 0 1px rgba(255, 255, 255, 0.024);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+
 * {
   margin: 0;
   padding: 0;
@@ -62,7 +87,7 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background-color: var(--bg-primary);
+  background-color: var(--bg-secondary); /* Match slider background for seamless loading */
   color: var(--text-primary);
   line-height: 1.5;
   font-size: 14px;
@@ -73,4 +98,60 @@ body {
 code,
 pre {
   font-family: ui-monospace, 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+}
+
+/* Intro Slider Animations */
+@keyframes slideEntrance {
+  0% { transform: translateY(-100%); }
+  15% { transform: translateY(0); }
+  85% { transform: translateY(0); }
+  100% { transform: translateY(-100%); }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; pointer-events: none; }
+  100% { opacity: 1; pointer-events: auto; }
+}
+
+.animate-slide-entrance {
+  animation: slideEntrance 3.5s ease-in-out forwards;
+}
+
+.animate-fade-in-content {
+  animation: fadeIn 1.5s ease-out 3.2s forwards;
+  opacity: 0;
+  pointer-events: none; /* Prevent interaction while hidden */
+}
+
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+.intro-content {
+  text-align: center;
+}
+
+.intro-title {
+  font-size: clamp(4rem, 10vw, 8rem);
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  margin-bottom: var(--space-4);
+  color: var(--text-primary);
+}
+
+.intro-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
 }

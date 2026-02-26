@@ -1,10 +1,11 @@
 # LangSmith Setup Guide
 
-Complete guide to set up LangSmith observability for the TOON Studio backend.
+Complete guide to set up LangSmith observability for the Lexa Studio backend.
 
 ## What is LangSmith?
 
 LangSmith is an observability platform for LLM applications that helps you:
+
 - Track AI model requests and responses
 - Monitor token usage and costs
 - Debug issues with prompts
@@ -37,11 +38,13 @@ LANGSMITH_TRACING=true
 ```
 
 **Windows (PowerShell)** - temporary session:
+
 ```powershell
 $env:LANGSMITH_API_KEY="your_api_key_here"
 ```
 
 **Linux/Mac**:
+
 ```bash
 export LANGSMITH_API_KEY="your_api_key_here"
 ```
@@ -83,6 +86,7 @@ uvicorn main:app --reload --port 8000
 ### Render (Backend)
 
 Add environment variables in Render dashboard:
+
 1. Go to your service → **Environment**
 2. Add:
    ```
@@ -102,6 +106,7 @@ The backend loads environment variables from `.env` automatically using `python-
 ### ❌ "LangSmith - Set LANGSMITH_API_KEY"
 
 **Solutions:**
+
 1. Verify the API key is set in `backend/.env`
 2. Restart the backend server
 3. Check the terminal for errors
@@ -110,6 +115,7 @@ The backend loads environment variables from `.env` automatically using `python-
 ### ❌ No traces appearing in LangSmith
 
 **Solutions:**
+
 1. Set `LANGSMITH_TRACING=true` in your `.env`
 2. Perform a query in the Query & Analysis tab
 3. Check the backend console for connection errors
@@ -118,6 +124,7 @@ The backend loads environment variables from `.env` automatically using `python-
 ### ❌ CORS errors
 
 **Solutions:**
+
 1. Check that frontend is configured with correct backend URL
 2. Verify CORS settings in `backend/main.py`
 3. Clear browser cache
@@ -127,6 +134,7 @@ The backend loads environment variables from `.env` automatically using `python-
 ## Optional: Disable LangSmith
 
 To run without LangSmith:
+
 1. Remove `LANGSMITH_API_KEY` from `.env`
 2. Or set `LANGSMITH_TRACING=false`
 3. The app will work normally without observability

@@ -63,4 +63,54 @@ export const queryData = (dataText, question, dataFormat) =>
 export const countTokens = (text) =>
     api.post('/api/count', { text });
 
+/**
+ * WebSocket streaming query
+ * @param {string} dataText 
+ * @param {string} question 
+ * @param {string} dataFormat 
+ * @param {Object} callbacks - { onMetadata, onDelta, onFinal, onError, onClose }
+ * @returns {WebSocket}
+ */
+export const queryDataStream = (dataText, question, dataFormat, callbacks) => {
+    const wsUrl = API_BASE_URL.replace(/^http/, 'ws') + '/ws/query';
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+        ws.send(JSON.stringify({
+            data_text: dataText,
+            question,
+            data_format: dataFormat
+        }));
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        // Handle direct error response
+        if (data.error && callbacks.onError) {
+            callbacks.onError(data.error);
+            ws.close();
+            return;
+        }
+
+        if (data.type === 'metadata' && callbacks.onMetadata) callbacks.onMetadata(data);
+        if (data.type === 'content' && callbacks.onDelta) callbacks.onDelta(data.delta);
+        if (data.type === 'final' && callbacks.onFinal) callbacks.onFinal(data);
+        if (data.type === 'error' && callbacks.onError) {
+            callbacks.onError(data.message);
+            ws.close();
+        }
+    };
+
+    ws.onerror = () => {
+        if (callbacks.onError) callbacks.onError('WebSocket connection error');
+    };
+
+    ws.onclose = () => {
+        if (callbacks.onClose) callbacks.onClose();
+    };
+
+    return ws;
+};
+
 export default api;

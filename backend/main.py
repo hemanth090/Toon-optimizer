@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 import json
 import os
 from dotenv import load_dotenv
@@ -10,6 +10,7 @@ from utils import (
     convert_json_to_toon_util,
     convert_toon_to_json_util,
     query_data_with_gemini_util,
+    stream_query_data_with_gemini_util,
     check_api_keys,
     count_tokens
 )
@@ -17,14 +18,14 @@ from utils import (
 load_dotenv()
 
 app = FastAPI(
-    title="TOON Data & Token Studio API",
+    title="Lexa Studio - Token Efficiency API",
     description="API for JSON/TOON conversion and AI-powered data queries",
     version="1.0.0"
 )
 
 # CORS middleware - configure allowed origins via environment variable
 # Set ALLOWED_ORIGINS in production (comma-separated list)
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:4173").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -90,10 +91,27 @@ class StatusResponse(BaseModel):
 class CountRequest(BaseModel):
     text: str
 
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+manager = ConnectionManager()
+
 # API Endpoints
 @app.get("/")
 def read_root():
-    return {"message": "TOON Data & Token Studio API", "version": "1.0.0"}
+    return {"message": "Lexa Studio - Token Efficiency API", "version": "1.0.0"}
 
 @app.get("/api/health")
 def health_check():
@@ -154,6 +172,32 @@ def query_data(request: QueryRequest):
 def count_text_tokens(request: CountRequest):
     count = count_tokens(request.text)
     return {"count": count}
+
+@app.websocket("/ws/query")
+async def websocket_query(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        # Wait for the initial request message
+        data = await websocket.receive_text()
+        request_json = json.loads(data)
+        
+        data_text = request_json.get("data_text")
+        question = request_json.get("question")
+        data_format = request_json.get("data_format")
+        
+        if not data_text or not question or not data_format:
+            await websocket.send_text(json.dumps({"error": "Missing required fields"}))
+            return
+
+        async for chunk in stream_query_data_with_gemini_util(data_text, question, data_format):
+            await websocket.send_text(chunk)
+            
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
+    finally:
+        manager.disconnect(websocket)
 
 if __name__ == "__main__":
     import uvicorn

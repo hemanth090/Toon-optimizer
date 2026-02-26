@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
-import { queryData, countTokens } from '../services/api';
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { queryDataStream } from '../services/api';
+import TokenStack from './TokenStack';
 import './QueryAnalysis.css';
 
-// Gemini 2.5 Flash Pricing
+// Gemini 2.0/2.5 Flash Pricing
 const GEMINI_PRICING = {
     INPUT_PER_MILLION: 0.15,
     OUTPUT_PER_MILLION: 0.60,
@@ -15,60 +17,34 @@ const calculateCost = (inputTokens, outputTokens) => {
     return cost.toFixed(6);
 };
 
-// Debounce helper
-const useDebounce = (value, delay) => {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-    useEffect(() => {
-        const handler = setTimeout(() => setDebouncedValue(value), delay);
-        return () => clearTimeout(handler);
-    }, [value, delay]);
-    return debouncedValue;
-};
-
 function QueryAnalysis() {
     const [dataFormat, setDataFormat] = useState('JSON');
     const [dataInput, setDataInput] = useState('[{"id": 1, "name": "Alice", "age": 30}, {"id": 2, "name": "Bob", "age": 25}]');
     const [question, setQuestion] = useState('');
-    const [result, setResult] = useState(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [answer, setAnswer] = useState('');
+    const [metadata, setMetadata] = useState(null);
+    const [finalStats, setFinalStats] = useState(null);
     const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [inputTokenCount, setInputTokenCount] = useState(0);
-    const [isCounting, setIsCounting] = useState(false);
-
-    const debouncedDataInput = useDebounce(dataInput, 1000);
+    const [history, setHistory] = useState(() => {
+        const saved = localStorage.getItem('query_history');
+        return saved ? JSON.parse(saved) : [];
+    });
+    
+    const abortControllerRef = useRef(null);
 
     useEffect(() => {
-        const fetchTokenCount = async () => {
-            if (!debouncedDataInput.trim()) {
-                setInputTokenCount(0);
-                return;
-            }
-            setIsCounting(true);
-            try {
-                const data = await countTokens(debouncedDataInput);
-                setInputTokenCount(data.count);
-            } catch (err) {
-                console.error("Failed to count tokens:", err);
-            } finally {
-                setIsCounting(false);
-            }
-        };
+        localStorage.setItem('query_history', JSON.stringify(history));
+    }, [history]);
 
-        fetchTokenCount();
-    }, [debouncedDataInput]);
-
-    const exampleQuestions = [
-        "What's the average age?",
-        "List all names",
-        "How many items?",
-        "Summarize data"
-    ];
-
-    const handleExampleClick = (q) => {
-        setQuestion(q);
+    const addToHistory = (item) => {
+        setHistory(prev => {
+            const newHistory = [item, ...prev].slice(0, 10);
+            return newHistory;
+        });
     };
 
-    const handleAnalyze = async () => {
+    const handleAnalyze = () => {
         if (!question.trim()) {
             setError('Please enter a question');
             return;
@@ -78,188 +54,198 @@ function QueryAnalysis() {
             return;
         }
 
-        setLoading(true);
+        setIsAnalyzing(true);
         setError(null);
-        setResult(null);
+        setAnswer('');
+        setMetadata(null);
+        setFinalStats(null);
 
-        try {
-            const data = await queryData(dataInput, question, dataFormat);
+        const callbacks = {
+            onMetadata: (data) => setMetadata(data),
+            onDelta: (delta) => setAnswer(prev => prev + delta),
+            onFinal: (stats) => {
+                setAnswer(stats.answer); // Ensure final answer is set
+                setFinalStats(stats);
+                setIsAnalyzing(false);
+                addToHistory({
+                    id: Date.now(),
+                    question,
+                    format: dataFormat,
+                    timestamp: new Date().toLocaleTimeString(),
+                    answer: stats.answer,
+                    stats,
+                    metadata: {
+                        json_data_tokens: metadata?.json_data_tokens || 0,
+                        toon_data_tokens: metadata?.toon_data_tokens || 0,
+                        prompt_tokens: metadata?.prompt_tokens || 0
+                    }
+                });
+            },
+            onError: (err) => {
+                setError(err);
+                setIsAnalyzing(false);
+            },
+            onClose: () => setIsAnalyzing(false)
+        };
 
-            // Clean up the answer - remove markdown code fences and "Answer" labels
-            let cleanAnswer = data.answer.trim();
+        abortControllerRef.current = queryDataStream(dataInput, question, dataFormat, callbacks);
+    };
 
-            // Remove "Answer" or similar labels at the start
-            cleanAnswer = cleanAnswer.replace(/^(Answer|Response|Result|Output)[\s:]*\n*/i, '');
-
-            // Remove markdown code fences (```json, ```toon, etc.)
-            cleanAnswer = cleanAnswer.replace(/```[a-z]*\n?/g, '');
-            cleanAnswer = cleanAnswer.replace(/```\n?/g, '');
-
-            // Trim again after cleanup
-            cleanAnswer = cleanAnswer.trim();
-
-            data.answer = cleanAnswer;
-            setResult(data);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
+    const handleExampleClick = (q) => setQuestion(q);
+    
+    const loadFromHistory = (item) => {
+        setQuestion(item.question);
+        setDataFormat(item.format);
+        setAnswer(item.answer);
+        setFinalStats(item.stats);
+        setMetadata(item.metadata);
     };
 
     return (
         <div className="query-container">
             <div className="query-main">
                 <div className="data-section">
-                    <h2>1. Select Format & Enter Data</h2>
-
+                    <h3>📊 Input Data</h3>
                     <div className="format-selector-top">
                         <label className={`format-option ${dataFormat === 'JSON' ? 'active' : ''}`}>
-                            <input
-                                type="radio"
-                                value="JSON"
-                                checked={dataFormat === 'JSON'}
-                                onChange={(e) => setDataFormat(e.target.value)}
-                            />
-                            <span>JSON</span>
+                            <input type="radio" value="JSON" checked={dataFormat === 'JSON'} onChange={() => setDataFormat('JSON')} />
+                            JSON
                         </label>
                         <label className={`format-option ${dataFormat === 'TOON' ? 'active' : ''}`}>
-                            <input
-                                type="radio"
-                                value="TOON"
-                                checked={dataFormat === 'TOON'}
-                                onChange={(e) => setDataFormat(e.target.value)}
-                            />
-                            <span>TOON</span>
+                            <input type="radio" value="TOON" checked={dataFormat === 'TOON'} onChange={() => setDataFormat('TOON')} />
+                            TOON
                         </label>
                     </div>
-
                     <div className="input-wrapper">
-                        <textarea
+                        <textarea 
                             className="code-input"
                             value={dataInput}
                             onChange={(e) => setDataInput(e.target.value)}
                             placeholder={`Paste your ${dataFormat} data here...`}
-                            disabled={!dataFormat}
                         />
-                        <div className="realtime-token-count">
-                            {isCounting ? 'Counting...' : `${dataFormat} Tokens: ${inputTokenCount}`}
-                        </div>
                     </div>
                 </div>
 
                 <div className="question-section">
-                    <h2>2. Ask a Question</h2>
-                    <input
-                        type="text"
-                        className="question-input"
-                        value={question}
-                        onChange={(e) => setQuestion(e.target.value)}
-                        placeholder="e.g., What's the average age?"
-                        disabled={!dataInput.trim()}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-                    />
-
+                    <h3>🤖 Ask Gemini</h3>
+                    <div className="input-wrapper">
+                        <input 
+                            type="text" 
+                            className="question-input"
+                            value={question}
+                            onChange={(e) => setQuestion(e.target.value)}
+                            placeholder="What would you like to know?"
+                            onKeyPress={(e) => e.key === 'Enter' && handleAnalyze()}
+                        />
+                    </div>
+                    
                     <div className="examples">
-                        <span className="examples-label">Examples:</span>
+                        <span className="examples-label">Try these:</span>
                         <div className="example-buttons">
-                            {exampleQuestions.map((eq, i) => (
-                                <button
-                                    key={i}
-                                    className="btn-example"
-                                    onClick={() => handleExampleClick(eq)}
-                                    disabled={!dataInput.trim()}
-                                >
-                                    {eq}
-                                </button>
-                            ))}
+                            <button className="btn-example" onClick={() => handleExampleClick("Summarize this data")}>Summarize</button>
+                            <button className="btn-example" onClick={() => handleExampleClick("Key trends?")}>Trends</button>
                         </div>
                     </div>
 
-                    <button
-                        className="btn-analyze"
+                    <button 
+                        className="btn-analyze" 
                         onClick={handleAnalyze}
-                        disabled={loading || !dataInput.trim() || !question.trim()}
+                        disabled={isAnalyzing || !dataInput.trim() || !question.trim()}
                     >
-                        {loading ? '🔍 Analyzing...' : '🔍 Analyze'}
+                        {isAnalyzing ? "🤔 Analyzing..." : "🔍 Analyze Data"}
                     </button>
 
-                    {error && (
-                        <div className="error-message">
-                            <strong>Error:</strong> {error}
+                    <AnimatePresence>
+                        {error && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="error-message"
+                            >
+                                ⚠️ {error}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {history.length > 0 && (
+                        <div className="history-section">
+                            <span className="examples-label">Recent History:</span>
+                            <div className="history-list">
+                                {history.map(item => (
+                                    <button key={item.id} className="history-item" onClick={() => loadFromHistory(item)}>
+                                        <span className="history-q">{item.question}</span>
+                                        <span className="history-time">{item.timestamp}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>
+
+                <AnimatePresence mode="wait">
+                    {(answer || isAnalyzing) && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="results-section"
+                        >
+                            <div className="answer-box">
+                                <h3>AI Response</h3>
+                                <div className="answer-content">
+                                    {answer}
+                                    {isAnalyzing && <span className="typing-cursor">|</span>}
+                                </div>
+                            </div>
+
+                            {metadata && (
+                                <motion.div 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="token-analysis-container"
+                                >
+                                    <div className="analysis-header">
+                                        <h4>Efficiency Comparison</h4>
+                                        <p className="analysis-subtitle">How TOON format affects your token usage</p>
+                                    </div>
+                                    
+                                    <TokenStack 
+                                        jsonTokens={metadata.json_data_tokens}
+                                        toonTokens={metadata.toon_data_tokens}
+                                    />
+
+                                    <div className="breakdown-grid">
+                                        <div className="breakdown-item">
+                                            <span className="label">JSON Input tokens</span>
+                                            <span className="value">{metadata.json_data_tokens}</span>
+                                        </div>
+                                        <div className="breakdown-item toon">
+                                            <span className="label">TOON Input tokens</span>
+                                            <span className="value">{metadata.toon_data_tokens}</span>
+                                        </div>
+                                        {finalStats && (
+                                            <>
+                                                <div className="breakdown-item total">
+                                                    <span className="label">Total Tokens (In + Out)</span>
+                                                    <span className="value">{finalStats.total_llm_tokens}</span>
+                                                </div>
+                                                <div className="breakdown-item cost">
+                                                    <span className="label">Estimated Cost</span>
+                                                    <span className="value">${calculateCost(metadata.prompt_tokens, finalStats.completion_tokens)}</span>
+                                                </div>
+                                                <div className="breakdown-item">
+                                                    <span className="label">Execution Time</span>
+                                                    <span className="value">{finalStats.exec_ms}ms</span>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
-
-            {result && (
-                <div className="results-section">
-                    <div className="answer-box">
-                        <h2>Answer</h2>
-                        <div className="answer-content">{result.answer}</div>
-                    </div>
-
-                    <div className="token-analysis-container">
-                        <div className="analysis-section">
-                            <h3>Token Usage Breakdown</h3>
-
-                            {/* Input Section */}
-                            <div className="token-section">
-                                <h4>📥 Input Tokens</h4>
-                                <div className="breakdown-grid">
-                                    <div className="breakdown-item">
-                                        <span className="label">Data ({result.data_format})</span>
-                                        <span className="value">{result.breakdown.data_tokens}</span>
-                                    </div>
-                                    <div className="breakdown-item">
-                                        <span className="label">Question</span>
-                                        <span className="value">{result.breakdown.question_tokens}</span>
-                                    </div>
-                                    <div className="breakdown-item">
-                                        <span className="label">System Prompt</span>
-                                        <span className="value">{result.breakdown.template_tokens}</span>
-                                    </div>
-                                    <div className="breakdown-item total">
-                                        <span className="label">Total Input</span>
-                                        <span className="value">{result.prompt_tokens}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Output Section */}
-                            <div className="token-section">
-                                <h4>📤 Output Tokens</h4>
-                                <div className="breakdown-grid">
-                                    <div className="breakdown-item">
-                                        <span className="label">AI Response ({result.data_format})</span>
-                                        <span className="value">{result.completion_tokens}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Total Section */}
-                            <div className="token-section">
-                                <h4>💰 Total Cost</h4>
-                                <div className="breakdown-grid">
-                                    <div className="breakdown-item total">
-                                        <span className="label">Total Tokens</span>
-                                        <span className="value">{result.total_llm_tokens}</span>
-                                    </div>
-                                    <div className="breakdown-item cost">
-                                        <span className="label">Cost</span>
-                                        <span className="value">
-                                            ${calculateCost(result.prompt_tokens, result.completion_tokens)}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="pricing-info">
-                                    Pricing: ${GEMINI_PRICING.INPUT_PER_MILLION} per million tokens in • ${GEMINI_PRICING.OUTPUT_PER_MILLION} per million tokens out
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

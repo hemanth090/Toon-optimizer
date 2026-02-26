@@ -4,8 +4,6 @@ import './HowToUse.css';
 function HowToUse() {
     return (
         <div className="how-to-use">
-            <h2>📚 How to Use</h2>
-
             <div className="instructions-grid">
                 <div className="instruction-card">
                     <h3>1️⃣ JSON to TOON</h3>
