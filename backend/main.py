@@ -25,7 +25,7 @@ app = FastAPI(
 
 # CORS middleware - configure allowed origins via environment variable
 # Set ALLOWED_ORIGINS in production (comma-separated list)
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:4173").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:4173,https://toon-optimizer.vercel.app").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
