@@ -11,11 +11,18 @@ class ApiService {
     }
 
     async post(endpoint, data) {
+        const apiKey = localStorage.getItem('gemini_api_key');
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        
+        if (apiKey) {
+            headers['X-Gemini-API-Key'] = apiKey;
+        }
+
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: headers,
             body: JSON.stringify(data),
         });
 
@@ -74,12 +81,14 @@ export const countTokens = (text) =>
 export const queryDataStream = (dataText, question, dataFormat, callbacks) => {
     const wsUrl = API_BASE_URL.replace(/^http/, 'ws') + '/ws/query';
     const ws = new WebSocket(wsUrl);
+    const apiKey = localStorage.getItem('gemini_api_key');
 
     ws.onopen = () => {
         ws.send(JSON.stringify({
             data_text: dataText,
             question,
-            data_format: dataFormat
+            data_format: dataFormat,
+            api_key: apiKey // Send API key override if present
         }));
     };
 

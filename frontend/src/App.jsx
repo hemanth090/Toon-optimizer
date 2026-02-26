@@ -11,11 +11,16 @@ import "./App.css";
 function App() {
   const [activeTab, setActiveTab] = useState("json-to-toon");
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+  const [geminiKey, setGeminiKey] = useState(localStorage.getItem("gemini_api_key") || "");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("gemini_api_key", geminiKey);
+  }, [geminiKey]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === "light" ? "dark" : "light");
@@ -61,6 +66,28 @@ function App() {
             <span className="nav-label">How to Use</span>
           </button>
         </nav>
+
+        <div className="sidebar-settings">
+          <div className="settings-header">
+            <span className="settings-icon">🔑</span>
+            <span className="settings-label">API Settings</span>
+          </div>
+          <div className="api-key-input-wrapper">
+            <input 
+              type="password" 
+              className="sidebar-api-input"
+              value={geminiKey}
+              onChange={(e) => setGeminiKey(e.target.value)}
+              placeholder="Enter Gemini API Key..."
+            />
+            {geminiKey && (
+              <button className="clear-api-key" onClick={() => setGeminiKey("")} title="Clear Key">
+                ✕
+              </button>
+            )}
+          </div>
+          <p className="api-notice">Key is stored locally in your browser.</p>
+        </div>
 
         <div className="sidebar-footer">
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle Dark Mode">

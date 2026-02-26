@@ -263,12 +263,21 @@ Provide a clear, natural language answer. Be direct and concise."""
         "exec_ms": exec_ms
     }
 
-async def stream_query_data_with_gemini_util(data_text: str, question: str, data_format: str):
+async def stream_query_data_with_gemini_util(data_text: str, question: str, data_format: str, api_key: str = None):
     """Generator for streaming Gemini AI responses via WebSocket using google-genai SDK"""
     start_time = time.time()
     
-    if not genai_client:
-        yield json.dumps({"type": "error", "message": "Gemini API key not configured or initialization failed"})
+    # Use provided API key or global client
+    current_client = genai_client
+    if api_key:
+        try:
+            current_client = genai.Client(api_key=api_key)
+        except Exception as e:
+            yield json.dumps({"type": "error", "message": f"Invalid API key provided: {str(e)}"})
+            return
+            
+    if not current_client:
+        yield json.dumps({"type": "error", "message": "Gemini API key not configured. Please provide one in the sidebar."})
         return
     
     # Set project name based on input format

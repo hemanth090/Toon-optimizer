@@ -25,7 +25,7 @@ app = FastAPI(
 
 # CORS middleware - configure allowed origins via environment variable
 # Set ALLOWED_ORIGINS in production (comma-separated list)
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:4173").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:4173,https://toon-optimizer.vercel.app").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -184,12 +184,13 @@ async def websocket_query(websocket: WebSocket):
         data_text = request_json.get("data_text")
         question = request_json.get("question")
         data_format = request_json.get("data_format")
+        api_key = request_json.get("api_key")
         
         if not data_text or not question or not data_format:
             await websocket.send_text(json.dumps({"error": "Missing required fields"}))
             return
 
-        async for chunk in stream_query_data_with_gemini_util(data_text, question, data_format):
+        async for chunk in stream_query_data_with_gemini_util(data_text, question, data_format, api_key):
             await websocket.send_text(chunk)
             
     except WebSocketDisconnect:
