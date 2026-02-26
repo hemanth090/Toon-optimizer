@@ -13,10 +13,24 @@ function StatusIndicator() {
         const fetchStatus = async () => {
             try {
                 const data = await getStatus();
-                setStatus({ ...data, loading: false });
+                const localGemini = localStorage.getItem('gemini_api_key');
+                const localLangsmith = localStorage.getItem('langsmith_api_key');
+                
+                setStatus({ 
+                    ...data, 
+                    langsmith_connected: data.langsmith_connected || !!localLangsmith,
+                    gemini_configured: data.gemini_configured || !!localGemini,
+                    loading: false 
+                });
             } catch (error) {
                 console.error('Failed to fetch status:', error);
-                setStatus(prev => ({ ...prev, loading: false }));
+                const localGemini = localStorage.getItem('gemini_api_key');
+                const localLangsmith = localStorage.getItem('langsmith_api_key');
+                setStatus({
+                    langsmith_connected: !!localLangsmith,
+                    gemini_configured: !!localGemini,
+                    loading: false
+                });
             }
         };
 
@@ -36,7 +50,7 @@ function StatusIndicator() {
                 <div className="status-info">
                     <span className="status-label">LangSmith</span>
                     {!status.langsmith_connected && (
-                        <span className="status-hint">Set LANGSMITH_API_KEY</span>
+                        <span className="status-hint">Optional: Set in Sidebar</span>
                     )}
                 </div>
             </div>
@@ -46,7 +60,7 @@ function StatusIndicator() {
                 <div className="status-info">
                     <span className="status-label">Gemini AI</span>
                     {!status.gemini_configured && (
-                        <span className="status-hint">Set GEMINI_API_KEY</span>
+                        <span className="status-hint">Required: Set in Sidebar</span>
                     )}
                 </div>
             </div>

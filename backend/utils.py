@@ -52,13 +52,8 @@ def check_api_keys():
         "gemini_configured": bool(gemini_key)
     }
 
-# Initialize LangSmith
-LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
-langsmith_client = None
-if LANGSMITH_API_KEY:
-    langsmith_client = Client(api_key=LANGSMITH_API_KEY)
-    os.environ["LANGCHAIN_TRACING_V2"] = "true"
-    os.environ["LANGCHAIN_API_KEY"] = LANGSMITH_API_KEY
+# LangSmith configuration is now handled dynamically per-request
+# No global initialization to avoid server-side dependency
 
 # Initialize Gemini API Key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -107,12 +102,20 @@ def convert_toon_to_json_util(toon_input: str):
 
 
 
-def query_data_with_gemini_util(data_text: str, question: str, data_format: str):
+def query_data_with_gemini_util(data_text: str, question: str, data_format: str, api_key: str = None, langsmith_key: str = None):
     """Query and analyze data using Gemini AI"""
     start_time = time.time()
     
-    if not GEMINI_API_KEY:
-        return {"error": "Gemini API key not configured"}
+    # Use provided API key or global client
+    current_client = genai_client
+    if api_key:
+        try:
+            current_client = genai.Client(api_key=api_key)
+        except Exception as e:
+            return {"error": f"Invalid API key provided: {str(e)}"}
+            
+    if not current_client:
+        return {"error": "Gemini API key not configured. Please provide one in the sidebar."}
     
     # Set project name based on input format
     project_name = "json-query" if data_format == "JSON" else "toon-query"
@@ -159,20 +162,12 @@ Question: {question}
 
 Provide a clear, natural language answer. Be direct and concise."""
     
-    # Create traceable function for Gemini query
-    @traceable(
-        name=f"{data_format.lower()}_query",
-        project_name=project_name,
-        run_type="llm",
-        metadata={
-            "model": GEMINI_MODEL_NAME
-        }
-    )
+    # Inner query function (can be traced if key provided)
     def _gemini_query(prompt_text, input_tokens):
-        if not genai_client:
+        if not current_client:
             raise Exception("GenAI client not initialized")
             
-        response = genai_client.models.generate_content(
+        response = current_client.models.generate_content(
             model=GEMINI_MODEL_NAME,
             contents=prompt_text
         )
@@ -188,6 +183,21 @@ Provide a clear, natural language answer. Be direct and concise."""
             }
         }
     
+    # Wrap with LangSmith tracing ONLY if key is provided
+    final_query_func = _gemini_query
+    if langsmith_key:
+        try:
+            final_query_func = traceable(
+                _gemini_query,
+                name=f"{data_format.lower()}_query",
+                project_name=project_name,
+                run_type="llm",
+                metadata={"model": GEMINI_MODEL_NAME},
+                client=Client(api_key=langsmith_key)
+            )
+        except Exception as e:
+            logger.warning(f"Failed to initialize LangSmith tracing: {e}")
+
     # Count component tokens for detailed breakdown
     data_tokens = count_tokens(data_text)
     question_tokens = count_tokens(question)
@@ -195,7 +205,7 @@ Provide a clear, natural language answer. Be direct and concise."""
     template_tokens = max(0, prompt_tokens - (data_tokens + question_tokens))
     
     # Execute query
-    result = _gemini_query(prompt, prompt_tokens)
+    result = final_query_func(prompt, prompt_tokens)
     answer = result["answer"]
     completion_tokens = result["usage"]["completion_tokens"]
     total_llm_tokens = result["usage"]["total_tokens"]
@@ -263,7 +273,7 @@ Provide a clear, natural language answer. Be direct and concise."""
         "exec_ms": exec_ms
     }
 
-async def stream_query_data_with_gemini_util(data_text: str, question: str, data_format: str, api_key: str = None):
+async def stream_query_data_with_gemini_util(data_text: str, question: str, data_format: str, api_key: str = None, langsmith_key: str = None):
     """Generator for streaming Gemini AI responses via WebSocket using google-genai SDK"""
     start_time = time.time()
     
@@ -324,7 +334,7 @@ Provide a clear, natural language answer. Be direct and concise."""
 
     try:
         # Use the new SDK streaming method
-        response_stream = genai_client.models.generate_content_stream(
+        response_stream = current_client.models.generate_content_stream(
             model=GEMINI_MODEL_NAME,
             contents=prompt
         )

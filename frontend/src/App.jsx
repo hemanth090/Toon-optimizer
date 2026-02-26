@@ -12,6 +12,7 @@ function App() {
   const [activeTab, setActiveTab] = useState("json-to-toon");
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
   const [geminiKey, setGeminiKey] = useState(localStorage.getItem("gemini_api_key") || "");
+  const [langsmithKey, setLangsmithKey] = useState(localStorage.getItem("langsmith_api_key") || "");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -21,6 +22,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem("gemini_api_key", geminiKey);
   }, [geminiKey]);
+
+  useEffect(() => {
+    localStorage.setItem("langsmith_api_key", langsmithKey);
+  }, [langsmithKey]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === "light" ? "dark" : "light");
@@ -78,7 +83,7 @@ function App() {
               className="sidebar-api-input"
               value={geminiKey}
               onChange={(e) => setGeminiKey(e.target.value)}
-              placeholder="Enter Gemini API Key..."
+              placeholder="Gemini API Key..."
             />
             {geminiKey && (
               <button className="clear-api-key" onClick={() => setGeminiKey("")} title="Clear Key">
@@ -86,7 +91,22 @@ function App() {
               </button>
             )}
           </div>
-          <p className="api-notice">Key is stored locally in your browser.</p>
+
+          <div className="api-key-input-wrapper" style={{ marginTop: '8px' }}>
+            <input 
+              type="password" 
+              className="sidebar-api-input"
+              value={langsmithKey}
+              onChange={(e) => setLangsmithKey(e.target.value)}
+              placeholder="LangSmith Key (Optional)"
+            />
+            {langsmithKey && (
+              <button className="clear-api-key" onClick={() => setLangsmithKey("")} title="Clear Key">
+                ✕
+              </button>
+            )}
+          </div>
+          <p className="api-notice">Keys are stored locally in your browser.</p>
         </div>
 
         <div className="sidebar-footer">

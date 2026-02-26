@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Literal, List
@@ -150,13 +150,17 @@ def toon_to_json(request: ToonToJsonRequest):
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post("/api/query", response_model=QueryResponse)
-def query_data(request: QueryRequest):
+def query_data(request: QueryRequest, 
+               x_gemini_api_key: Optional[str] = Header(None),
+               x_langsmith_api_key: Optional[str] = Header(None)):
     """Query data using Gemini AI"""
     try:
         result = query_data_with_gemini_util(
             request.data_text,
             request.question,
-            request.data_format
+            request.data_format,
+            api_key=x_gemini_api_key,
+            langsmith_key=x_langsmith_api_key
         )
         
         if "error" in result:
@@ -185,12 +189,13 @@ async def websocket_query(websocket: WebSocket):
         question = request_json.get("question")
         data_format = request_json.get("data_format")
         api_key = request_json.get("api_key")
+        langsmith_key = request_json.get("langsmith_key")
         
         if not data_text or not question or not data_format:
             await websocket.send_text(json.dumps({"error": "Missing required fields"}))
             return
 
-        async for chunk in stream_query_data_with_gemini_util(data_text, question, data_format, api_key):
+        async for chunk in stream_query_data_with_gemini_util(data_text, question, data_format, api_key, langsmith_key):
             await websocket.send_text(chunk)
             
     except WebSocketDisconnect:
