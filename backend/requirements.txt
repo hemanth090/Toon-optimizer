@@ -1,4 +1,5 @@
 fastapi>=0.104.1
+gunicorn>=21.2.0
 uvicorn[standard]>=0.24.0
 toon_format==0.9.0b1
 tiktoken>=0.5.1
