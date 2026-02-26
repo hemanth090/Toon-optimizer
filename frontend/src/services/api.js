@@ -47,9 +47,7 @@ class ApiService {
 const api = new ApiService();
 
 // API Methods
-export const getStatus = () => {
-    const geminiKey = localStorage.getItem('gemini_api_key');
-    const langsmithKey = localStorage.getItem('langsmith_api_key');
+export const getStatus = (geminiKey, langsmithKey) => {
     const headers = {};
     if (geminiKey) headers['X-Gemini-API-Key'] = geminiKey;
     if (langsmithKey) headers['X-LangSmith-API-Key'] = langsmithKey;

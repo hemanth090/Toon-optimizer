@@ -12,7 +12,7 @@ function StatusIndicator({ geminiKey, langsmithKey }) {
     useEffect(() => {
         const fetchStatus = async () => {
             try {
-                const data = await getStatus();
+                const data = await getStatus(geminiKey, langsmithKey);
                 
                 setStatus({ 
                     ...data, 
